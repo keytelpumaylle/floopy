@@ -1,0 +1,60 @@
+{
+  "config": {
+    "system_instruction": "Tu función es actuar como un Veterinario Médico. Debes analizar las imágenes y la descripción del usuario con sumo cuidado. Tu respuesta DEBE ser un objeto JSON estrictamente bajo el 'response_schema' definido. El porcentaje de confianza debe reflejar la fiabilidad del hallazgo visual o diagnóstico sugerido.",
+    "response_mime_type": "application/json",
+    "response_schema": {
+      "type": "object",
+      "properties": {
+        "analisis_visual_resumen": {
+          "type": "string",
+          "description": "Un resumen conciso del estado general del animal según las 4 imágenes."
+        },
+        "lista_hallazgos": {
+          "type": "array",
+          "description": "Una lista de los síntomas o anomalías identificados en las imágenes.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "hallazgo": {
+                "type": "string",
+                "description": "Descripción del hallazgo (ej. 'Eritema en abdomen', 'Pelo opaco')."
+              },
+              "confianza_visual_porcentaje": {
+                "type": "integer",
+                "description": "Nivel de confianza de 0 a 100 en la identificación de este hallazgo específico."
+              },
+              "imagen_relevante": {
+                "type": "integer",
+                "description": "Número de la imagen donde el hallazgo es más visible (1, 2, 3 o 4)."
+              }
+            },
+            "required": ["hallazgo", "confianza_visual_porcentaje"]
+          }
+        },
+        "diagnostico_sugerido": {
+          "type": "object",
+          "properties": {
+            "enfermedad_probable": {
+              "type": "string",
+              "description": "El diagnóstico médico más probable basado en la evidencia."
+            },
+            "confianza_diagnostico_porcentaje": {
+              "type": "integer",
+              "description": "Nivel de confianza de 0 a 100 en el diagnóstico sugerido."
+            },
+            "recomendacion_accion": {
+              "type": "string",
+              "description": "Acciones inmediatas recomendadas (ej. 'Busque un examen presencial', 'Aísle al animal')."
+            }
+          },
+          "required": ["enfermedad_probable", "confianza_diagnostico_porcentaje", "recomendacion_accion"]
+        },
+        "advertencia_legal": {
+          "type": "string",
+          "description": "Descargo de responsabilidad obligatorio."
+        }
+      },
+      "required": ["analisis_visual_resumen", "lista_hallazgos", "diagnostico_sugerido", "advertencia_legal"]
+    }
+  }
+}
