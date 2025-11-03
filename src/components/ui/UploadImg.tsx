@@ -2,14 +2,16 @@
 
 import { useRef } from "react";
 import Image from 'next/image';
+import { ImageUp } from "lucide-react";
 
 
 interface UploadImageProps {
   imageUrl: string | null;
   onImageUpload: (url: string | null) => void;
+  hasImages?: boolean;
 }
 
-export default function UploadImage({ imageUrl, onImageUpload }: UploadImageProps) {
+export default function UploadImage({ imageUrl, onImageUpload, hasImages = false }: UploadImageProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -72,22 +74,9 @@ export default function UploadImage({ imageUrl, onImageUpload }: UploadImageProp
           </div>
         </>
       ) : (
-        <div className="text-gray-400 text-center">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-12 w-12 mx-auto mb-2"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 4v16m8-8H4"
-            />
-          </svg>
-          <p className="text-sm">Subir imagen</p>
+        <div className="text-white flex flex-col items-center gap-3">
+          <ImageUp size={70} strokeWidth={1.5}/>
+          <p className="text-base font-semibold">{hasImages ? "Agregar imagen" : "Agregue 1 imagen al menos"}</p>
         </div>
       )}
     </div>

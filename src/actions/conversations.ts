@@ -67,20 +67,6 @@ const model = genAI.getGenerativeModel({
   systemInstruction: promptConfig.config.system_instruction,
 });
 
-// Función para generar código único basado en DNI (se ejecuta en el servidor)
-function generarCodigoConsulta(dni: string): string {
-  if (!dni || dni.trim() === '') {
-    // Si no hay DNI, generar código con timestamp
-    return `CONSULTA-${Date.now()}`;
-  }
-
-  // En el servidor, generamos un código base que el cliente completará
-  // El cliente verificará el historial en localStorage
-  const timestamp = Date.now();
-  return `${dni}-${timestamp}`;
-}
-
-
 export async function analizarMascotaConGemini(
   input: AnalysisInput
 ): Promise<ApiResponse> {
@@ -207,13 +193,8 @@ export async function analizarMascotaConGemini(
       console.log(geminiData.advertencia_legal);
       console.log("\n=======================================\n");
 
-      // Generar código de consulta
-      const codigoConsulta = generarCodigoConsulta(petData.dni);
-      console.log(`\n🔢 Código de consulta generado: ${codigoConsulta}\n`);
-
       return {
-        ...geminiData,
-        codigo_consulta: codigoConsulta,
+        ...geminiData
       };
     } else {
       console.error("❌ Error: Formato de respuesta inválido");

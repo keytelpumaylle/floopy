@@ -1,49 +1,25 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Sparkles, X } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { useSettingsStore } from "@/store/useSettingsStore";
 import { useAnalysisStore } from "@/store/useAnalysisStore";
-import { useModalStore } from "@/store/useModalStore";
+import { useNotificationStore } from "@/store/useNotificationStore";
 import { analizarMascotaConGemini } from "@/actions/conversations";
-
-// Interfaces para tipado estricto
-interface ConsultaHistorial {
-  dni: string;
-  codigo: string;
-  fecha: string;
-}
-
-// Función para generar código único en formato DNI-001
-const generarCodigoUnico = (dni: string): string => {
-  if (!dni || dni.trim() === '') {
-    return `CONSULTA-${Date.now()}`;
-  }
-
-  // Obtener historial de consultas
-  const historial = localStorage.getItem('consultas_historial');
-  const listaHistorial: ConsultaHistorial[] = historial ? JSON.parse(historial) : [];
-
-  // Contar cuántas consultas tiene este DNI
-  const consultasDNI = listaHistorial.filter((c) => c.dni === dni);
-  const numeroConsulta = consultasDNI.length + 1;
-
-  // Formatear número con ceros a la izquierda (001, 002, etc.)
-  const numeroFormateado = numeroConsulta.toString().padStart(3, '0');
-
-  return `${dni}-${numeroFormateado}`;
-};
+import { CreateHistories } from "@/actions/histories";
+import { SearchUsers, CreateUsers } from "@/actions/user";
+import UserNameModal from "@/components/modal/UserNameModal";
 
 export default function Input() {
-  //Modal de Informacion adicional
-  const { isOpen, closed, open } = useModalStore();
-
+  // Estado para el modal de nombre de usuario
+  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+  const [pendingAnalysis, setPendingAnalysis] = useState(false);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const { focusedSection, setFocusedSection, petData, setPetData } = useSettingsStore();
+  const { focusedSection, setFocusedSection, petData } = useSettingsStore();
   const { prompt, setPrompt, images, isAnalyzing, setIsAnalyzing } =
     useAnalysisStore();
-  const [error, setError] = useState<string>("");
+  const { addNotification } = useNotificationStore();
 
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const textarea = textareaRef.current;
@@ -58,24 +34,57 @@ export default function Input() {
     setFocusedSection("input");
   };
 
-  const handleAnalyze = async () => {
-    if (!prompt.trim()) {
-      setError("Por favor ingresa una descripción de los síntomas");
-      return;
+  // Función para crear usuario cuando no existe
+  const handleUserNameSubmit = async (name: string) => {
+    try {
+      console.log("📝 Creando nuevo usuario...");
+
+      const createResult = await CreateUsers({
+        dni: parseInt(petData.dni),
+        name: name
+      });
+
+      if (!createResult.meta.status) {
+        addNotification({
+          type: "error",
+          message: `Error al crear usuario: ${createResult.meta.message}`,
+          duration: 7000,
+        });
+        setIsUserModalOpen(false);
+        setIsAnalyzing(false);
+        return;
+      }
+
+      console.log("✅ Usuario creado exitosamente");
+      addNotification({
+        type: "success",
+        message: "¡Usuario registrado exitosamente!",
+        duration: 3000,
+      });
+
+      setIsUserModalOpen(false);
+
+      // Continuar con el análisis
+      if (pendingAnalysis) {
+        await proceedWithAnalysis();
+      }
+    } catch (error) {
+      console.error("Error al crear usuario:", error);
+      addNotification({
+        type: "error",
+        message: "Error al crear usuario",
+        duration: 7000,
+      });
+      setIsUserModalOpen(false);
+      setIsAnalyzing(false);
     }
+  };
 
-    if (images.length === 0) {
-      setError("Por favor sube al menos una imagen");
-      return;
-    }
-
-    setError("");
-    setIsAnalyzing(true);
-
+  // Función para proceder con el análisis de Gemini
+  const proceedWithAnalysis = async () => {
     try {
       // Convertir las imágenes al formato requerido
       const imageInputs = images.map((img) => {
-        // Extraer el mime type y los datos base64
         const matches = img.match(/^data:([^;]+);base64,(.+)$/);
         if (!matches) {
           throw new Error("Formato de imagen inválido");
@@ -98,45 +107,191 @@ export default function Input() {
       });
 
       if ("error" in result) {
-        setError(result.error);
-        console.error("Error en el análisis:", result.error);
-      } else {
-        console.log("\n✅ Análisis completado exitosamente");
-        console.log("Ver consola del servidor para detalles completos");
-
-        // Generar código único basado en DNI
-        const codigoConsulta = generarCodigoUnico(petData.dni);
-
-        // Guardar resultado en localStorage con el código de consulta
-        const analisisCompleto = {
-          ...result,
-          codigo_consulta: codigoConsulta,
-          imagenes: images,
-          petData: petData,
-          fecha: new Date().toISOString(),
-        };
-
-        localStorage.setItem(`consulta_${codigoConsulta}`, JSON.stringify(analisisCompleto));
-
-        // Guardar en historial
-        const historial = localStorage.getItem('consultas_historial');
-        const listaHistorial: ConsultaHistorial[] = historial ? JSON.parse(historial) : [];
-        listaHistorial.push({
-          dni: petData.dni,
-          codigo: codigoConsulta,
-          fecha: new Date().toISOString(),
+        addNotification({
+          type: "error",
+          message: result.error,
+          duration: 7000,
         });
-        localStorage.setItem('consultas_historial', JSON.stringify(listaHistorial));
-
-        // Redirigir a la página de detalles
-        window.location.href = `/${codigoConsulta}`;
+        console.error("Error en el análisis:", result.error);
+        setIsAnalyzing(false);
+        return;
       }
+
+      console.log("\n✅ Análisis completado exitosamente");
+      console.log("Ver consola del servidor para detalles completos");
+
+      // Preparar datos para CreateHistories
+      const historyData = {
+        personDni: parseInt(petData.dni),
+        animalName: petData.animalName,
+        genderOfAnimal: petData.genero === "Macho" ? 0 : 1,
+        averageWeight: parseFloat(petData.peso),
+        averageAge: parseFloat(petData.edad),
+        geminiResponse: JSON.stringify(result),
+      };
+
+      // Guardar en la base de datos
+      console.log("📤 Enviando datos al servidor...");
+      const historyResult = await CreateHistories(historyData);
+
+      if ("error" in historyResult) {
+        console.error("❌ Error al guardar en la base de datos:", historyResult.error);
+        addNotification({
+          type: "error",
+          message: `Error al guardar: ${historyResult.error}`,
+          duration: 7000,
+        });
+        setIsAnalyzing(false);
+        return;
+      }
+
+      console.log("✅ Historial guardado en la base de datos exitosamente");
+
+      // Obtener el código del historial
+      const historyCode = historyResult.code;
+
+      if (!historyCode) {
+        console.error("❌ No se recibió el código del historial");
+        addNotification({
+          type: "error",
+          message: "Error: No se pudo obtener el código del historial",
+          duration: 7000,
+        });
+        setIsAnalyzing(false);
+        setPendingAnalysis(false);
+        return;
+      }
+
+      console.log(`📋 Código del historial: ${historyCode}`);
+
+      addNotification({
+        type: "success",
+        message: "¡Análisis completado y guardado exitosamente! Redirigiendo...",
+        duration: 3000,
+      });
+
+      setIsAnalyzing(false);
+      setPendingAnalysis(false);
+
+      // Redirigir a la página de diagnóstico con el código y DNI
+      setTimeout(() => {
+        window.location.href = `/diagnostico?code=${historyCode}&dni=${petData.dni}`;
+      }, 1000);
     } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : "Error desconocido";
-      setError(errorMessage);
+      const errorMessage = err instanceof Error ? err.message : "Error desconocido";
+      addNotification({
+        type: "error",
+        message: `Error al analizar: ${errorMessage}`,
+        duration: 7000,
+      });
       console.error("Error al analizar:", err);
-    } finally {
+      setIsAnalyzing(false);
+      setPendingAnalysis(false);
+    }
+  };
+
+  const handleAnalyze = async () => {
+    // Validar campos vacíos
+    const camposFaltantes: string[] = [];
+
+    if (!prompt.trim()) {
+      camposFaltantes.push("Descripción de los síntomas");
+    }
+
+    if (images.length === 0) {
+      camposFaltantes.push("Añade una imagen");
+    }
+
+    if (!petData.animalName.trim()) {
+      camposFaltantes.push("Nombre de la mascota");
+    }
+
+    if (!petData.genero) {
+      camposFaltantes.push("Género de la mascota");
+    }
+
+    if (!petData.peso.trim()) {
+      camposFaltantes.push("Peso de la mascota");
+    } else {
+      const pesoNum = parseFloat(petData.peso);
+      if (isNaN(pesoNum) || pesoNum <= 0) {
+        camposFaltantes.push("Peso de la mascota (debe ser un número válido mayor a 0)");
+      }
+    }
+
+    if (!petData.edad.trim()) {
+      camposFaltantes.push("Edad de la mascota");
+    } else {
+      const edadNum = parseFloat(petData.edad);
+      if (isNaN(edadNum) || edadNum <= 0) {
+        camposFaltantes.push("Edad de la mascota (debe ser un número válido mayor a 0)");
+      }
+    }
+
+    if (!petData.dni.trim()) {
+      camposFaltantes.push("DNI del responsable");
+    } else {
+      const dniNum = petData.dni.trim();
+      if (!/^\d{8}$/.test(dniNum)) {
+        camposFaltantes.push("DNI del responsable (debe tener exactamente 8 dígitos)");
+      }
+    }
+
+    // Si hay campos faltantes, mostrar notificación
+    if (camposFaltantes.length > 0) {
+      let mensaje = "";
+
+      if (camposFaltantes.length === 1) {
+        mensaje = `Por favor completa el campo: <strong>${camposFaltantes[0]}</strong>`;
+      } else {
+        mensaje = `Por favor completa los siguientes campos:<ul class="list-disc ml-4 mt-2">`;
+        camposFaltantes.forEach((campo) => {
+          mensaje += `<li>${campo}</li>`;
+        });
+        mensaje += `</ul>`;
+      }
+
+      addNotification({
+        type: "warning",
+        message: mensaje,
+        duration: 7000,
+      });
+      return;
+    }
+
+    setIsAnalyzing(true);
+
+    try {
+      // PASO 1: Validar si el usuario existe
+      console.log("🔍 Validando usuario...");
+      const userSearch = await SearchUsers(parseInt(petData.dni));
+
+      if (!userSearch.meta.status) {
+        // Usuario no existe, abrir modal para pedir nombre
+        console.log("⚠️ Usuario no encontrado, solicitando registro...");
+        setPendingAnalysis(true);
+        setIsUserModalOpen(true);
+        return; // El flujo continuará después de que el usuario ingrese su nombre
+      }
+
+      // Usuario existe, continuar con el análisis
+      console.log("✅ Usuario encontrado:", userSearch.user?.name);
+      addNotification({
+        type: "info",
+        message: `Bienvenido de nuevo, ${userSearch.user?.name}`,
+        duration: 3000,
+      });
+
+      // Proceder con el análisis
+      await proceedWithAnalysis();
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Error desconocido";
+      addNotification({
+        type: "error",
+        message: `Error: ${errorMessage}`,
+        duration: 7000,
+      });
+      console.error("Error:", err);
       setIsAnalyzing(false);
     }
   };
@@ -155,7 +310,7 @@ export default function Input() {
       <div
         className={`transition-all duration-500 ease-in-out min-h-0 ${getFlexClass()}`}
       >
-        <div className="border-[#525252] border-1 rounded-[30px] bg-[#141414] h-full flex flex-col overflow-hidden">
+        <div className="border-[#525252] border-1 rounded-[15px] bg-[#141414] h-full flex flex-col overflow-hidden">
           <textarea
             ref={textareaRef}
             onFocus={handleFocus}
@@ -164,7 +319,7 @@ export default function Input() {
             className={`flex-1 w-full px-6 resize-none focus:outline-none text-xl bg-transparent transition-all duration-500 ${
               isContracted ? "py-2 overflow-hidden whitespace-nowrap" : "py-4"
             }`}
-            placeholder="Mi perro está rascándose mucho y tiene zonas sin pelo ¿Qué puede ser?"
+            placeholder="Describe los sintomas o malestares de tu mascota..."
             rows={2}
             disabled={isAnalyzing}
             style={{ overflow: "hidden" }}
@@ -175,121 +330,36 @@ export default function Input() {
               isContracted ? "h-0 p-0 opacity-0" : "opacity-100"
             }`}
           >
-            {error && <div className="text-red-500 text-sm">{error}</div>}
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <span className="text-xs text-gray-400">Modelo</span>
                 <span className="text-sm">Gemini</span>
               </div>
-            
+
               <button
-                onClick={open}
+                onClick={handleAnalyze}
+                disabled={isAnalyzing}
                 className="px-4 py-2 bg-[#dbef67] text-black rounded-[25px] hover:bg-[#c9d95f] disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors flex items-center gap-2 whitespace-nowrap"
               >
                 <Sparkles className={isAnalyzing ? "animate-spin" : ""} />
-                Analizar
+                {isAnalyzing ? "Analizando..." : "Analizar"}
               </button>
             </div>
           </div>
         </div>
       </div>
 
-      {/*Modal*/}
-      {isOpen ? (
-        <section className="absolute top-0 left-0 w-full h-full bg-[#eaeaea20] z-50 text-white">
-          <div className="relative bg-[#121212] w-[35%] h-full mx-auto inset-0 p-8">
-            <header className="flex justify-between border-[#eaeaea20] border-b-1 pb-4">
-              <div className="flex flex-col gap-2 ">
-                <h3 className="text-3xl font-bold">Mejora el diagnóstico</h3>
-                <span className="text-lg font-light">Complete la siguiente informacion</span>
-              </div>
-              <div>
-                <button 
-                className="hover:cursor-pointer"
-                onClick={closed}>
-                  <X />
-                </button>
-              </div>
-            </header>
-            
-            {/** Contenido del modal*/}
-            <div className="my-8 overflow-y-auto">
-      
-
-        {/* Genero */}
-        <div className="mb-6">
-          <label className="text-sm text-gray-300 block mb-2">Género de la mascota</label>
-          <select
-            value={petData.genero}
-            onChange={(e) => setPetData({ genero: e.target.value as 'Macho' | 'Hembra' })}
-            className="w-full bg-[#262626] border border-[#525252] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#dbef67] cursor-pointer"
-          >
-            <option value="">Seleccionar...</option>
-            <option value="Macho">Macho</option>
-            <option value="Hembra">Hembra</option>
-          </select>
-        </div>
-
-        {/* Peso Aproximado */}
-        <div className="mb-4">
-          <div className="flex items-center justify-between mb-2">
-            <label className="text-sm text-gray-300">Peso Aproximado (kg) - Mascota</label>
-          </div>
-          <input
-            type="text"
-            placeholder="12 kg"
-            value={petData.peso}
-            onChange={(e) => setPetData({ peso: e.target.value })}
-            className="w-full bg-[#262626] border border-[#525252] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#dbef67]"
-          />
-        </div>
-
-        {/* Edad Aproximado */}
-        <div className="mb-4">
-          <div className="flex items-center justify-between mb-2">
-            <label className="text-sm text-gray-300">Edad Aproximado - Mascota</label>
-          </div>
-          <input
-            type="text"
-            placeholder="1 año con 3 meses"
-            value={petData.edad}
-            onChange={(e) => setPetData({ edad: e.target.value })}
-            className="w-full bg-[#262626] border border-[#525252] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#dbef67]"
-          />
-        </div>
-
-        {/*DNI  */}
-        <div className="mb-4">
-          <div className="flex items-center justify-between mb-2">
-            <label className="text-sm text-gray-300">DNI - Responsable</label>
-          </div>
-          <input
-            type="text"
-            placeholder="7654321"
-            name="dni"
-            value={petData.dni}
-            onChange={(e) => setPetData({ dni: e.target.value })}
-            className="w-full bg-[#262626] border border-[#525252] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#dbef67]"
-          />
-        </div>
-      </div>
-
-
-            <footer className="flex justify-end">
-              <div>
-                <button
-                onClick={handleAnalyze}
-                disabled={isAnalyzing}
-                className="px-4 py-2 bg-[#dbef67] text-black rounded-[25px] hover:bg-[#c9d95f] disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors flex items-center gap-2 whitespace-nowrap"
-              >
-                <Sparkles className={isAnalyzing ? "animate-spin" : ""} />
-                {isAnalyzing ? "Analizando..." : "Continuar"}
-              </button>
-              </div>
-            </footer>
-          </div>
-        </section>
-      ) : null}
+      {/* Modal para registro de usuario */}
+      <UserNameModal
+        isOpen={isUserModalOpen}
+        onClose={() => {
+          setIsUserModalOpen(false);
+          setIsAnalyzing(false);
+          setPendingAnalysis(false);
+        }}
+        onSubmit={handleUserNameSubmit}
+        dni={petData.dni}
+      />
     </>
   );
 }

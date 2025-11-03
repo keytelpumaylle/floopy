@@ -3,6 +3,7 @@ import { create } from 'zustand';
 type FocusedSection = 'input' | 'settings' | 'none';
 
 interface PetData {
+  animalName: string;
   genero: 'Macho' | 'Hembra' | '';
   peso: string;
   edad: string;
@@ -19,6 +20,7 @@ interface SettingsStore {
 }
 
 const initialPetData: PetData = {
+  animalName: '',
   genero: '',
   peso: '',
   edad: '',

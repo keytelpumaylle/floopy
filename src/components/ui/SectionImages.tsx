@@ -51,6 +51,8 @@ export default function SectionImages() {
         return { imageUrl: null, isActive: false };
       });
 
+  const hasImages = images.some(img => img !== null);
+
   return (
     <div className="grid grid-cols-2 grid-rows-2 gap-2 w-full h-full">
             {displaySlots.map((slot, index) => (
@@ -59,6 +61,7 @@ export default function SectionImages() {
                   key={index}
                   imageUrl={slot.imageUrl}
                   onImageUpload={(url: string | null) => handleImageUpload(index, url)}
+                  hasImages={hasImages}
                 />
               ) : (
                 <div key={index} className="bg-[#1a1a1a] rounded shadow border-2 border-dashed border-gray-600" />
