@@ -68,6 +68,7 @@ interface AnalysisInput {
   descripcion: string;
   imagenes: ImageInput[];
   petData: PetDataInput;
+  language?: 'español' | 'english' | 'quechua';
 }
 
 // Verificar que el TOKEN esté disponible
@@ -91,11 +92,12 @@ const model = genAI.getGenerativeModel({
 export async function analizarMascotaConGemini(
   input: AnalysisInput
 ): Promise<ApiResponse> {
-  const { descripcion, imagenes, petData } = input;
+  const { descripcion, imagenes, petData, language = 'español' } = input;
   try {
     console.log("\n=== INICIANDO ANÁLISIS CON GEMINI ===");
     console.log("Descripción del usuario:", descripcion);
     console.log("Número de imágenes:", imagenes.length);
+    console.log("Idioma seleccionado:", language);
     console.log("Datos de la mascota:");
     console.log("  - Género:", petData.genero || "No especificado");
     console.log("  - Peso:", petData.peso || "No especificado");
@@ -152,10 +154,17 @@ export async function analizarMascotaConGemini(
       if (petData.edad) contextoPet += `\n- Edad: ${petData.edad}`;
     }
 
+    // Instrucción de idioma según la selección del usuario
+    const languageInstructions = {
+      'español': '\n\nIMPORTANTE: Responde en ESPAÑOL. Todos los campos del JSON deben estar en español.',
+      'english': '\n\nIMPORTANTE: Respond in ENGLISH. All JSON fields must be in English.',
+      'quechua': '\n\nIMPORTANTE: Responde en QUECHUA. Todos los campos del JSON deben estar en quechua. Utiliza el quechua cusqueño estándar para el análisis veterinario.'
+    };
+
     // Construir el contenido para enviar a Gemini
     const parts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = [
       {
-        text: "IMPORTANTE: Primero valida que las imágenes sean de animales con posibles problemas médicos. Si las imágenes no son apropiadas para un análisis veterinario, marca 'contexto_valido' como false.\n\nSi el contexto es válido, analiza las imágenes proporcionadas. Identifica cualquier síntoma visible, anomalía o indicio de enfermedad en el animal. Basándote en el análisis visual, la descripción del usuario, los datos de la mascota y las clínicas disponibles, proporciona un análisis veterinario completo con recomendaciones específicas de clínicas y medicamentos.",
+        text: `IMPORTANTE: Primero valida que las imágenes sean de animales con posibles problemas médicos. Si las imágenes no son apropiadas para un análisis veterinario, marca 'contexto_valido' como false.\n\nSi el contexto es válido, analiza las imágenes proporcionadas. Identifica cualquier síntoma visible, anomalía o indicio de enfermedad en el animal. Basándote en el análisis visual, la descripción del usuario, los datos de la mascota y las clínicas disponibles, proporciona un análisis veterinario completo con recomendaciones específicas de clínicas y medicamentos.${languageInstructions[language]}`,
       },
     ];
 

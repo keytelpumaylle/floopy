@@ -20,7 +20,7 @@ export default function Input() {
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { focusedSection, setFocusedSection, petData } = useSettingsStore();
-  const { prompt, setPrompt, images, isAnalyzing, setIsAnalyzing } =
+  const { prompt, setPrompt, images, isAnalyzing, setIsAnalyzing, language, setLanguage } =
     useAnalysisStore();
   const { addNotification } = useNotificationStore();
 
@@ -134,6 +134,7 @@ export default function Input() {
           edad: petData.edad,
           dni: petData.dni,
         },
+        language: language,
       });
       completeLoadingStep();
 
@@ -400,9 +401,24 @@ export default function Input() {
             }`}
           >
             <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-xs text-gray-500">Modelo</span>
                 <span className="text-xs md:text-sm">Gemini</span>
+
+                {/* Selector de idioma */}
+                <div className="flex items-center gap-1 border border-gray-300 rounded-md px-2 py-1">
+                  <span className="text-xs text-gray-500">Idioma:</span>
+                  <select
+                    value={language}
+                    onChange={(e) => setLanguage(e.target.value as 'español' | 'english' | 'quechua')}
+                    disabled={isAnalyzing}
+                    className="text-xs bg-transparent focus:outline-none cursor-pointer disabled:cursor-not-allowed text-gray-900"
+                  >
+                    <option value="español">Español</option>
+                    <option value="english">English</option>
+                    <option value="quechua">Quechua</option>
+                  </select>
+                </div>
               </div>
 
               <button
