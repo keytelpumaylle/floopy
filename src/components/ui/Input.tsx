@@ -377,7 +377,7 @@ export default function Input() {
   return (
     <>
       <div
-        className={`transition-all duration-500 ease-in-out min-h-0 ${getFlexClass()}`}
+        className={`transition-all duration-500 ease-in-out min-h-[250px] md:min-h-0 ${getFlexClass()}`}
       >
         <div className="border-gray-300 border-1 rounded-[15px] bg-gray-100 h-full flex flex-col overflow-hidden text-black">
           <textarea

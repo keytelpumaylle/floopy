@@ -18,9 +18,9 @@ export default function Home() {
 
       <Notifications />
       <Navbar />
-      <main className="flex-1 flex flex-col lg:flex-row mx-4 md:mx-8 lg:mx-[13%] gap-4 md:gap-6 min-h-0 relative z-10">
+      <main className="flex-1 flex flex-col lg:flex-row mx-4 md:mx-8 lg:mx-[13%] gap-4 md:gap-6 min-h-0 relative z-10 overflow-y-auto lg:overflow-hidden">
         {/* Componente del chat */}
-        <section className="w-full lg:w-[40%] flex flex-col gap-2 min-h-0">
+        <section className="w-full lg:w-[40%] flex flex-col gap-2 min-h-0 lg:min-h-full">
 
           <Settings/>
           <Input/>
@@ -28,7 +28,7 @@ export default function Home() {
 
         </section>
         {/* Componente de las iamgenes */}
-        <section className="w-full lg:w-[60%] min-h-0">
+        <section className="w-full lg:w-[60%] min-h-[400px] lg:min-h-0">
           <SectionImages/>
         </section>
 

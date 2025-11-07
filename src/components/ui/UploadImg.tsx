@@ -61,12 +61,12 @@ export default function UploadImage({ imageUrl, onImageUpload, hasImages = false
             <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
               <button
                 onClick={handleRemove}
-                className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition-colors"
+                className="bg-red-500 hover:bg-red-600 text-white px-2 md:px-3 lg:px-4 py-1.5 md:py-2 rounded-lg transition-colors text-xs md:text-sm"
               >
                 Eliminar
               </button>
               <button
-                className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors"
+                className="bg-purple-600 hover:bg-purple-700 text-white px-2 md:px-3 lg:px-4 py-1.5 md:py-2 rounded-lg transition-colors text-xs md:text-sm"
               >
                 Cambiar
               </button>
@@ -74,9 +74,9 @@ export default function UploadImage({ imageUrl, onImageUpload, hasImages = false
           </div>
         </>
       ) : (
-        <div className="text-gray-900 flex flex-col items-center gap-3">
-          <ImageUp size={70} strokeWidth={1.5}/>
-          <p className="text-base font-semibold">{hasImages ? "Agregar imagen" : "Agregue 1 imagen al menos"}</p>
+        <div className="text-gray-900 flex flex-col items-center gap-2 md:gap-3 px-2">
+          <ImageUp className="w-10 h-10 md:w-14 md:h-14 lg:w-16 lg:h-16" strokeWidth={1.5}/>
+          <p className="text-xs md:text-sm lg:text-base font-semibold text-center">{hasImages ? "Agregar imagen" : "Agregue 1 imagen al menos"}</p>
         </div>
       )}
     </div>
