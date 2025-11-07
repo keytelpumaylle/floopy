@@ -2,6 +2,7 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import type { Schema } from "@google/generative-ai";
 import promptConfig from "./prompt.json";
+import { GetClinicas, GetSpecialties, GetMedications } from "./clinicas";
 
 // Tipos TypeScript basados en el schema del prompt
 interface Hallazgo {
@@ -16,10 +17,30 @@ interface DiagnosticoSugerido {
   recomendacion_accion: string;
 }
 
+interface MedicamentoRecomendado {
+  nombre: string;
+  descripcion: string;
+  disponible_en_tienda: boolean;
+  nombre_tienda?: string;
+  precio?: number;
+}
+
+interface Recomendaciones {
+  clinica_recomendada: {
+    nombre: string;
+    razon: string;
+  };
+  especialidad_requerida: string;
+  medicamentos_recomendados: MedicamentoRecomendado[];
+}
+
 interface GeminiResponse {
+  contexto_valido: boolean;
+  mensaje_contexto: string;
   analisis_visual_resumen: string;
   lista_hallazgos: Hallazgo[];
   diagnostico_sugerido: DiagnosticoSugerido;
+  recomendaciones: Recomendaciones;
   advertencia_legal: string;
   codigo_consulta?: string;
 }
@@ -79,12 +100,53 @@ export async function analizarMascotaConGemini(
     console.log("  - Género:", petData.genero || "No especificado");
     console.log("  - Peso:", petData.peso || "No especificado");
     console.log("  - Edad:", petData.edad || "No especificado");
+
+    // Obtener información de clínicas, especialidades y medicamentos
+    console.log("\n=== OBTENIENDO DATOS DE CLÍNICAS ===");
+    const clinicasResponse = await GetClinicas();
+    let contextoClinicas = "\n\nCLÍNICAS VETERINARIAS DISPONIBLES:\n";
+
+    if (clinicasResponse?.meta?.status && Array.isArray(clinicasResponse.store)) {
+      for (const clinica of clinicasResponse.store) {
+        contextoClinicas += `\n• Clínica: ${clinica.name}`;
+        contextoClinicas += `\n  Dirección: ${clinica.address}`;
+
+        // Obtener especialidades de la clínica
+        try {
+          const specialtiesResponse = await GetSpecialties(clinica.id);
+          if (specialtiesResponse?.meta?.status && Array.isArray(specialtiesResponse.specialty)) {
+            contextoClinicas += `\n  Especialidades: ${specialtiesResponse.specialty.map((s: { specialty: string }) => s.specialty).join(', ')}`;
+          }
+        } catch (error) {
+          console.error(`Error al obtener especialidades de ${clinica.name}:`, error);
+        }
+
+        // Obtener medicamentos de la clínica
+        try {
+          const medicationsResponse = await GetMedications(clinica.id);
+          if (medicationsResponse?.meta?.status && Array.isArray(medicationsResponse.medication)) {
+            contextoClinicas += `\n  Medicamentos disponibles:`;
+            medicationsResponse.medication.forEach((med: { name: string; description: string; price: number; stock: number }) => {
+              contextoClinicas += `\n    - ${med.name} (S/. ${med.price}, Stock: ${med.stock}): ${med.description}`;
+            });
+          }
+        } catch (error) {
+          console.error(`Error al obtener medicamentos de ${clinica.name}:`, error);
+        }
+
+        contextoClinicas += "\n";
+      }
+    } else {
+      contextoClinicas += "\nNo hay clínicas disponibles en este momento.";
+    }
+
+    console.log(contextoClinicas);
     console.log("=====================================\n");
 
     // Construir el contexto adicional con los datos de la mascota
     let contextoPet = "";
     if (petData.genero || petData.peso || petData.edad) {
-      contextoPet = "\n\nDatos adicionales de la mascota:";
+      contextoPet = "\n\nDATOS DE LA MASCOTA:";
       if (petData.genero) contextoPet += `\n- Género: ${petData.genero}`;
       if (petData.peso) contextoPet += `\n- Peso: ${petData.peso}`;
       if (petData.edad) contextoPet += `\n- Edad: ${petData.edad}`;
@@ -93,7 +155,7 @@ export async function analizarMascotaConGemini(
     // Construir el contenido para enviar a Gemini
     const parts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = [
       {
-        text: "Analiza las imágenes proporcionadas. Identifica cualquier síntoma visible, anomalía o indicio de enfermedad en el animal. Basándote en el análisis visual, la descripción del usuario y los datos de la mascota, proporciona un análisis veterinario completo.",
+        text: "IMPORTANTE: Primero valida que las imágenes sean de animales con posibles problemas médicos. Si las imágenes no son apropiadas para un análisis veterinario, marca 'contexto_valido' como false.\n\nSi el contexto es válido, analiza las imágenes proporcionadas. Identifica cualquier síntoma visible, anomalía o indicio de enfermedad en el animal. Basándote en el análisis visual, la descripción del usuario, los datos de la mascota y las clínicas disponibles, proporciona un análisis veterinario completo con recomendaciones específicas de clínicas y medicamentos.",
       },
     ];
 
@@ -111,9 +173,9 @@ export async function analizarMascotaConGemini(
       });
     }
 
-    // Agregar la descripción del usuario con los datos de la mascota
+    // Agregar la descripción del usuario con los datos de la mascota y clínicas
     parts.push({
-      text: `Descripción del usuario: ${descripcion}${contextoPet}`,
+      text: `Descripción del usuario: ${descripcion}${contextoPet}${contextoClinicas}`,
     });
 
     console.log("\nEnviando solicitud a Gemini...");
@@ -164,14 +226,20 @@ export async function analizarMascotaConGemini(
     if (
       typeof data === "object" &&
       data !== null &&
+      "contexto_valido" in data &&
+      "mensaje_contexto" in data &&
       "analisis_visual_resumen" in data &&
       "lista_hallazgos" in data &&
       "diagnostico_sugerido" in data &&
+      "recomendaciones" in data &&
       "advertencia_legal" in data
     ) {
       const geminiData = data as GeminiResponse;
 
       console.log("\n=== ANÁLISIS PROCESADO EXITOSAMENTE ===");
+      console.log(`\n✅ Contexto válido: ${geminiData.contexto_valido}`);
+      console.log(`📝 Mensaje contexto: ${geminiData.mensaje_contexto}`);
+
       console.log("\n📋 Resumen del análisis visual:");
       console.log(geminiData.analisis_visual_resumen);
 
@@ -188,6 +256,22 @@ export async function analizarMascotaConGemini(
       console.log(`  Enfermedad probable: ${geminiData.diagnostico_sugerido.enfermedad_probable}`);
       console.log(`  Confianza: ${geminiData.diagnostico_sugerido.confianza_diagnostico_porcentaje}%`);
       console.log(`  Recomendación: ${geminiData.diagnostico_sugerido.recomendacion_accion}`);
+
+      console.log("\n🏥 Recomendaciones:");
+      console.log(`  Clínica recomendada: ${geminiData.recomendaciones.clinica_recomendada.nombre}`);
+      console.log(`  Razón: ${geminiData.recomendaciones.clinica_recomendada.razon}`);
+      console.log(`  Especialidad requerida: ${geminiData.recomendaciones.especialidad_requerida}`);
+      console.log("\n💊 Medicamentos recomendados:");
+      geminiData.recomendaciones.medicamentos_recomendados.forEach((med, index) => {
+        console.log(`  ${index + 1}. ${med.nombre}`);
+        console.log(`     Descripción: ${med.descripcion}`);
+        if (med.disponible_en_tienda) {
+          console.log(`     Disponible en: ${med.nombre_tienda}`);
+          console.log(`     Precio: S/. ${med.precio}`);
+        } else {
+          console.log(`     ⚠️ Medicamento no disponible en tienda`);
+        }
+      });
 
       console.log("\n⚠️  Advertencia legal:");
       console.log(geminiData.advertencia_legal);

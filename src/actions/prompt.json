@@ -1,13 +1,21 @@
 {
   "config": {
-    "system_instruction": "Tu función es actuar como un Veterinario Médico. Debes analizar las imágenes y la descripción del usuario con sumo cuidado. Tu respuesta DEBE ser un objeto JSON estrictamente bajo el 'response_schema' definido. El porcentaje de confianza debe reflejar la fiabilidad del hallazgo visual o diagnóstico sugerido.",
+    "system_instruction": "Tu función es actuar como un Veterinario Médico. IMPORTANTE: Primero debes validar que las imágenes proporcionadas sean de animales con posibles síntomas médicos o enfermedades. Si las imágenes NO son de animales, o son de animales completamente sanos sin ningún indicio de malestar, o son imágenes irrelevantes, debes marcar 'contexto_valido' como false y proporcionar una explicación en 'mensaje_contexto'.\n\nSi el contexto es válido, analiza las imágenes y la descripción del usuario con sumo cuidado. Recibirás información sobre clínicas veterinarias disponibles, sus especialidades y medicamentos en stock. Debes usar esta información para recomendar la clínica más apropiada según el diagnóstico, la especialidad que el paciente necesita, y los medicamentos disponibles en las tiendas.\n\nSi no hay un medicamento disponible en ninguna tienda, puedes sugerir medicamentos alternativos de tu conocimiento general, pero DEBES marcar claramente 'disponible_en_tienda' como false.\n\nTu respuesta DEBE ser un objeto JSON estrictamente bajo el 'response_schema' definido. El porcentaje de confianza debe reflejar la fiabilidad del hallazgo visual o diagnóstico sugerido.",
     "response_mime_type": "application/json",
     "response_schema": {
       "type": "object",
       "properties": {
+        "contexto_valido": {
+          "type": "boolean",
+          "description": "True si las imágenes son de animales con posibles problemas médicos. False si las imágenes están fuera de contexto (no son animales, animales totalmente sanos, o imágenes irrelevantes)."
+        },
+        "mensaje_contexto": {
+          "type": "string",
+          "description": "Si contexto_valido es false, explica por qué las imágenes están fuera de contexto. Si es true, este campo puede estar vacío o contener 'Contexto válido'."
+        },
         "analisis_visual_resumen": {
           "type": "string",
-          "description": "Un resumen conciso del estado general del animal según las 4 imágenes."
+          "description": "Un resumen conciso del estado general del animal según las imágenes."
         },
         "lista_hallazgos": {
           "type": "array",
@@ -49,12 +57,68 @@
           },
           "required": ["enfermedad_probable", "confianza_diagnostico_porcentaje", "recomendacion_accion"]
         },
+        "recomendaciones": {
+          "type": "object",
+          "description": "Recomendaciones de clínica, especialidad y medicamentos basadas en el diagnóstico.",
+          "properties": {
+            "clinica_recomendada": {
+              "type": "object",
+              "description": "Clínica recomendada según las especialidades disponibles.",
+              "properties": {
+                "nombre": {
+                  "type": "string",
+                  "description": "Nombre de la clínica recomendada."
+                },
+                "razon": {
+                  "type": "string",
+                  "description": "Razón por la cual se recomienda esta clínica."
+                }
+              },
+              "required": ["nombre", "razon"]
+            },
+            "especialidad_requerida": {
+              "type": "string",
+              "description": "Especialidad veterinaria que el paciente necesita (ej. 'Dermatología', 'Cardiología', 'Medicina General')."
+            },
+            "medicamentos_recomendados": {
+              "type": "array",
+              "description": "Lista de medicamentos recomendados para el tratamiento.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "nombre": {
+                    "type": "string",
+                    "description": "Nombre del medicamento."
+                  },
+                  "descripcion": {
+                    "type": "string",
+                    "description": "Descripción del medicamento y su uso."
+                  },
+                  "disponible_en_tienda": {
+                    "type": "boolean",
+                    "description": "True si el medicamento está disponible en alguna tienda. False si es una recomendación general."
+                  },
+                  "nombre_tienda": {
+                    "type": "string",
+                    "description": "Nombre de la tienda donde está disponible (solo si disponible_en_tienda es true)."
+                  },
+                  "precio": {
+                    "type": "number",
+                    "description": "Precio del medicamento en la tienda (solo si disponible_en_tienda es true)."
+                  }
+                },
+                "required": ["nombre", "descripcion", "disponible_en_tienda"]
+              }
+            }
+          },
+          "required": ["clinica_recomendada", "especialidad_requerida", "medicamentos_recomendados"]
+        },
         "advertencia_legal": {
           "type": "string",
           "description": "Descargo de responsabilidad obligatorio."
         }
       },
-      "required": ["analisis_visual_resumen", "lista_hallazgos", "diagnostico_sugerido", "advertencia_legal"]
+      "required": ["contexto_valido", "mensaje_contexto", "analisis_visual_resumen", "lista_hallazgos", "diagnostico_sugerido", "recomendaciones", "advertencia_legal"]
     }
   }
 }

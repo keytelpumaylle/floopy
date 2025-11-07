@@ -10,12 +10,10 @@ interface ClinicasStore {
   clinicas: Clinica[];
   isLoaded: boolean;
   setClinicas: (clinicas: Clinica[]) => void;
-  clearClinicas: () => void;
 }
 
 export const useClinicasStore = create<ClinicasStore>((set) => ({
   clinicas: [],
   isLoaded: false,
   setClinicas: (clinicas) => set({ clinicas, isLoaded: true }),
-  clearClinicas: () => set({ clinicas: [], isLoaded: false }),
 }));

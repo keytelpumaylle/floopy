@@ -13,7 +13,6 @@ interface NotificationStore {
   notifications: Notification[];
   addNotification: (notification: Omit<Notification, 'id'>) => void;
   removeNotification: (id: string) => void;
-  clearAll: () => void;
 }
 
 export const useNotificationStore = create<NotificationStore>((set) => ({
@@ -24,7 +23,7 @@ export const useNotificationStore = create<NotificationStore>((set) => ({
     const newNotification: Notification = {
       id,
       ...notification,
-      duration: notification.duration || 5000,
+      duration: notification.duration || 8000,
     };
 
     set((state) => ({
@@ -45,6 +44,4 @@ export const useNotificationStore = create<NotificationStore>((set) => ({
     set((state) => ({
       notifications: state.notifications.filter((n) => n.id !== id),
     })),
-
-  clearAll: () => set({ notifications: [] }),
 }));

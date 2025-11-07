@@ -37,7 +37,7 @@ export default function UploadImage({ imageUrl, onImageUpload, hasImages = false
   return (
     <div
       onClick={handleClick}
-      className="bg-[#262626] rounded shadow flex items-center justify-center cursor-pointer hover:bg-[#333333] transition-colors relative overflow-hidden w-full h-full group"
+      className="bg-gray-100 rounded shadow flex items-center justify-center cursor-pointer hover:bg-gray-200 transition-colors relative overflow-hidden w-full h-full group border border-gray-300"
     >
       <input
         ref={fileInputRef}
@@ -66,7 +66,7 @@ export default function UploadImage({ imageUrl, onImageUpload, hasImages = false
                 Eliminar
               </button>
               <button
-                className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
+                className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors"
               >
                 Cambiar
               </button>
@@ -74,7 +74,7 @@ export default function UploadImage({ imageUrl, onImageUpload, hasImages = false
           </div>
         </>
       ) : (
-        <div className="text-white flex flex-col items-center gap-3">
+        <div className="text-gray-900 flex flex-col items-center gap-3">
           <ImageUp size={70} strokeWidth={1.5}/>
           <p className="text-base font-semibold">{hasImages ? "Agregar imagen" : "Agregue 1 imagen al menos"}</p>
         </div>

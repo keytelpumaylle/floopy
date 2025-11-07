@@ -64,7 +64,7 @@ export default function SectionImages() {
                   hasImages={hasImages}
                 />
               ) : (
-                <div key={index} className="bg-[#1a1a1a] rounded shadow border-2 border-dashed border-gray-600" />
+                <div key={index} className="bg-gray-50 rounded shadow border-2 border-dashed border-gray-300" />
               )
             ))}
           </div>

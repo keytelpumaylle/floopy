@@ -40,18 +40,18 @@ export default function UserNameModal({ isOpen, onClose, onSubmit, dni }: UserNa
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-      <div className="bg-[#141414] border border-[#525252] rounded-[20px] p-8 max-w-md w-full shadow-2xl animate-in fade-in zoom-in duration-200">
+      <div className="bg-white border border-gray-300 rounded-[20px] p-8 max-w-md w-full shadow-2xl animate-in fade-in zoom-in duration-200">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <div className="bg-[#dbef67]/10 p-2 rounded-full">
-              <User className="text-[#dbef67]" size={24} />
+            <div className="bg-purple-100 p-2 rounded-full">
+              <User className="text-purple-600" size={24} />
             </div>
-            <h2 className="text-2xl font-bold text-white">Registro de Usuario</h2>
+            <h2 className="text-2xl font-bold text-gray-900">Registro de Usuario</h2>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white transition-colors"
+            className="text-gray-600 hover:text-gray-900 transition-colors"
           >
             <X size={24} />
           </button>
@@ -59,15 +59,15 @@ export default function UserNameModal({ isOpen, onClose, onSubmit, dni }: UserNa
 
         {/* Body */}
         <div className="mb-6">
-          <p className="text-gray-400 mb-4">
-            El DNI <span className="text-[#dbef67] font-semibold">{dni}</span> no está registrado en nuestro sistema.
+          <p className="text-gray-600 mb-4">
+            El DNI <span className="text-purple-600 font-semibold">{dni}</span> no está registrado en nuestro sistema.
           </p>
-          <p className="text-gray-400 mb-6">
+          <p className="text-gray-600 mb-6">
             Para continuar con el análisis, por favor ingresa tu nombre completo:
           </p>
 
           <div>
-            <label className="text-sm text-gray-300 block mb-2">
+            <label className="text-sm text-gray-700 block mb-2">
               Nombre Completo
             </label>
             <input
@@ -80,10 +80,10 @@ export default function UserNameModal({ isOpen, onClose, onSubmit, dni }: UserNa
               }}
               onKeyDown={handleKeyDown}
               autoFocus
-              className="w-full bg-[#262626] border border-[#525252] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-[#dbef67] transition-colors"
+              className="w-full bg-white border border-gray-300 rounded-lg px-4 py-3 text-gray-900 focus:outline-none focus:border-purple-600 transition-colors"
             />
             {error && (
-              <p className="text-red-400 text-sm mt-2">{error}</p>
+              <p className="text-red-600 text-sm mt-2">{error}</p>
             )}
           </div>
         </div>
@@ -92,13 +92,13 @@ export default function UserNameModal({ isOpen, onClose, onSubmit, dni }: UserNa
         <div className="flex gap-3">
           <button
             onClick={onClose}
-            className="flex-1 bg-[#262626] hover:bg-[#333333] text-white font-semibold py-3 rounded-[15px] transition-colors"
+            className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-900 font-semibold py-3 rounded-[15px] transition-colors"
           >
             Cancelar
           </button>
           <button
             onClick={handleSubmit}
-            className="flex-1 bg-[#dbef67] hover:bg-[#c9d95f] text-black font-semibold py-3 rounded-[15px] transition-colors"
+            className="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 rounded-[15px] transition-colors"
           >
             Continuar
           </button>
